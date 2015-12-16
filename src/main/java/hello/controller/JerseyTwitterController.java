@@ -1,7 +1,7 @@
 package hello.controller;
 
 import com.hazelcast.core.IList;
-import hello.service.TaskService;
+import hello.service.HomerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.social.twitter.api.Tweet;
@@ -17,14 +17,13 @@ import javax.ws.rs.core.Response;
 import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 @Component
 @Path("/")
 public class JerseyTwitterController {
 
 	@Autowired
-	private TaskService taskService;
+	private HomerService homerService;
 
 
 	@Resource
@@ -45,13 +44,6 @@ public class JerseyTwitterController {
     }
 
 	@GET
-	@Path("slow")
-	public void slow(@Suspended final AsyncResponse asyncResponse) throws InterruptedException, ExecutionException {
-		CompletableFuture.supplyAsync(taskService::execute)
-			.whenCompleteAsync((result, throwable) -> asyncResponse.resume(Response.ok(result)));
-	}
-
-	@GET
 	@Path("async")
 	public void async(@Suspended final AsyncResponse asyncResponse) {
 		CompletableFuture
@@ -61,7 +53,18 @@ public class JerseyTwitterController {
 				else
 					asyncResponse.resume(Response.serverError().build());
 			});
+	}
 
+	@GET
+	@Path("homer")
+	public void homer(@Suspended final AsyncResponse asyncResponse) {
+		homerService.process((response, throwable) -> {
+			if (throwable == null) {
+				asyncResponse.resume(Response.ok().type(MediaType.APPLICATION_JSON).entity(response).build());
+			} else {
+				asyncResponse.resume(Response.serverError().entity(throwable).build());
+			}
+		});
 	}
 
     public Optional<Tweet> random() {
